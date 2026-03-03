@@ -57,6 +57,21 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
+      - name: Generate config.js
+        run: |
+          cat > frontend/config.js <<EOF
+          const CONFIG = {
+            apiBase: '${{ secrets.CONFIG_API_BASE }}',
+            wsBase: '${{ secrets.CONFIG_WS_BASE }}',
+            cognitoDomain: '${{ secrets.CONFIG_COGNITO_DOMAIN }}',
+            clientId: '${{ secrets.CONFIG_CLIENT_ID }}',
+            redirectUri: '${{ secrets.CONFIG_REDIRECT_URI }}',
+            localDev: false,
+            localApiBase: 'http://localhost:8080',
+            localWsBase: 'ws://localhost:8080/ws',
+          };
+          EOF
+
       - name: Sync to S3
         run: aws s3 sync frontend/ s3://chatterchat-frontend-395762272568/ --delete
 
