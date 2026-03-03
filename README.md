@@ -38,6 +38,51 @@ chatterchat/
     └── app.js          # PKCE auth + WebSocket + REST
 ```
 
+## Local Development
+
+No AWS account needed. Runs fully locally with Docker for Postgres.
+
+### 1. Start Postgres
+
+```bash
+docker-compose up -d postgres
+```
+
+### 2. Run Migrations
+
+```bash
+docker-compose run --rm migrate
+```
+
+### 3. Start the Backend
+
+**Windows:**
+```powershell
+cd backend
+.\run-local.bat
+```
+
+**Mac/Linux:**
+```bash
+cd backend
+DATABASE_URL="host=localhost port=5432 user=chatterchat password=chatterchat dbname=chatterchat sslmode=disable" \
+LOCAL_DEV_USER="dev-001:alice:alice@local.dev" \
+go run ./cmd/local/
+```
+
+The server listens on `http://localhost:8080`. Auth is bypassed — `LOCAL_DEV_USER` injects a fake user.
+
+### 4. Serve the Frontend
+
+```bash
+cd frontend
+python -m http.server 3000
+```
+
+Open `http://localhost:3000`. Make sure `CONFIG.localDev = true` is set in `app.js` (it is by default).
+
+---
+
 ## Setup
 
 ### 1. AWS Prerequisites (manual)
