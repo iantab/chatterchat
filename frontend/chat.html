@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ChatterChat</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="chat-page">
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <span class="logo">ChatterChat</span>
+      <button id="sign-out-btn" class="btn-ghost" title="Sign out">⏻</button>
+    </div>
+    <div class="sidebar-user">
+      Signed in as <strong id="current-username">…</strong>
+    </div>
+    <h2 class="sidebar-label">Rooms</h2>
+    <ul id="room-list" class="room-list"></ul>
+  </aside>
+
+  <main class="chat-main">
+    <header class="chat-header">
+      <span id="current-room-name" class="room-title">Select a room</span>
+    </header>
+
+    <section id="message-area" class="message-area">
+      <p class="placeholder">← Pick a room to start chatting</p>
+    </section>
+
+    <footer class="message-form" id="message-form-wrapper" style="display:none">
+      <input
+        id="message-input"
+        type="text"
+        placeholder="Type a message…"
+        maxlength="4096"
+        autocomplete="off"
+      />
+      <button id="send-btn" class="btn-primary">Send</button>
+    </footer>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
