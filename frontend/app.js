@@ -123,8 +123,29 @@ function decodeJWT(token) {
 }
 
 function signOut() {
+  if (!CONFIG.localDev) {
+    const cognitoUser = initCognito().getCurrentUser();
+    if (cognitoUser) cognitoUser.signOut(); // clears SDK's localStorage keys
+  }
   sessionStorage.clear();
   window.location.href = 'index.html';
+}
+
+async function restoreSession() {
+  return new Promise((resolve, reject) => {
+    const userPool = initCognito();
+    const cognitoUser = userPool.getCurrentUser();
+    if (!cognitoUser) { reject(new Error('no session')); return; }
+    cognitoUser.getSession((err, session) => {
+      if (err || !session || !session.isValid()) {
+        reject(err || new Error('invalid session'));
+        return;
+      }
+      const token = session.getIdToken().getJwtToken();
+      sessionStorage.setItem('id_token', token);
+      resolve(token);
+    });
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -354,6 +375,14 @@ async function initIndexPage() {
     return;
   }
 
+  try {
+    await restoreSession();
+    window.location.href = 'chat.html';
+    return;
+  } catch (e) {
+    // No valid session — show sign-in form as normal
+  }
+
   // Tab switching
   document.querySelectorAll('.auth-tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -471,8 +500,12 @@ async function initChatPage() {
   }
 
   if (!idToken()) {
-    window.location.href = 'index.html';
-    return;
+    try {
+      await restoreSession();
+    } catch (e) {
+      window.location.href = 'index.html';
+      return;
+    }
   }
 
   // Fetch user record from API (includes display_name).
