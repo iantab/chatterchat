@@ -221,5 +221,3 @@ terraform destroy
 ```
 
 Deletes everything including the database.
-
-**Estimated monthly cost while running:** ~$47/month (dominated by NAT Gateway ~$32 and RDS ~$13).
