@@ -17,7 +17,7 @@ func UpsertUser(ctx context.Context, db *sqlx.DB, cognitoSub, username, email st
 		ON CONFLICT (cognito_sub) DO UPDATE
 			SET username = EXCLUDED.username,
 			    email    = EXCLUDED.email
-		RETURNING id, cognito_sub, username, email, created_at`
+		RETURNING id, cognito_sub, username, email, display_name, created_at`
 
 	var u models.User
 	if err := db.QueryRowxContext(ctx, q, cognitoSub, username, email).StructScan(&u); err != nil {
@@ -28,10 +28,22 @@ func UpsertUser(ctx context.Context, db *sqlx.DB, cognitoSub, username, email st
 
 // GetUserBySub returns a user by their Cognito sub.
 func GetUserBySub(ctx context.Context, db *sqlx.DB, cognitoSub string) (*models.User, error) {
-	const q = `SELECT id, cognito_sub, username, email, created_at FROM users WHERE cognito_sub = $1`
+	const q = `SELECT id, cognito_sub, username, email, display_name, created_at FROM users WHERE cognito_sub = $1`
 	var u models.User
 	if err := db.QueryRowxContext(ctx, q, cognitoSub).StructScan(&u); err != nil {
 		return nil, fmt.Errorf("get user by sub: %w", err)
+	}
+	return &u, nil
+}
+
+// UpdateDisplayName sets the display_name for a user by cognito_sub.
+func UpdateDisplayName(ctx context.Context, db *sqlx.DB, cognitoSub, displayName string) (*models.User, error) {
+	const q = `
+		UPDATE users SET display_name = $2 WHERE cognito_sub = $1
+		RETURNING id, cognito_sub, username, email, display_name, created_at`
+	var u models.User
+	if err := db.QueryRowxContext(ctx, q, cognitoSub, displayName).StructScan(&u); err != nil {
+		return nil, fmt.Errorf("update display name: %w", err)
 	}
 	return &u, nil
 }

@@ -9,7 +9,7 @@ resource "aws_apigatewayv2_api" "http" {
 
   cors_configuration {
     allow_origins = ["https://${aws_cloudfront_distribution.frontend.domain_name}"]
-    allow_methods = ["GET", "POST", "OPTIONS"]
+    allow_methods = ["GET", "POST", "PUT", "OPTIONS"]
     allow_headers = ["Content-Type", "Authorization"]
     max_age       = 300
   }
@@ -75,6 +75,22 @@ resource "aws_apigatewayv2_route" "get_room" {
 resource "aws_apigatewayv2_route" "get_messages" {
   api_id             = aws_apigatewayv2_api.http.id
   route_key          = "GET /rooms/{id}/messages"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.http_jwt.id
+  target             = "integrations/${aws_apigatewayv2_integration.http_api.id}"
+}
+
+resource "aws_apigatewayv2_route" "get_me" {
+  api_id             = aws_apigatewayv2_api.http.id
+  route_key          = "GET /users/me"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.http_jwt.id
+  target             = "integrations/${aws_apigatewayv2_integration.http_api.id}"
+}
+
+resource "aws_apigatewayv2_route" "update_me" {
+  api_id             = aws_apigatewayv2_api.http.id
+  route_key          = "PUT /users/me"
   authorization_type = "JWT"
   authorizer_id      = aws_apigatewayv2_authorizer.http_jwt.id
   target             = "integrations/${aws_apigatewayv2_integration.http_api.id}"

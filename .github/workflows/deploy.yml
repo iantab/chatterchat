@@ -65,6 +65,7 @@ jobs:
             wsBase: '${{ secrets.CONFIG_WS_BASE }}',
             cognitoDomain: '${{ secrets.CONFIG_COGNITO_DOMAIN }}',
             clientId: '${{ secrets.CONFIG_CLIENT_ID }}',
+            userPoolId: '${{ secrets.CONFIG_USER_POOL_ID }}',
             redirectUri: '${{ secrets.CONFIG_REDIRECT_URI }}',
             localDev: false,
             localApiBase: 'http://localhost:8080',

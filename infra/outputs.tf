@@ -4,12 +4,13 @@
 # ---------------------------------------------------------------------------
 
 output "app_js_config" {
-  description = "Paste these values into frontend/app.js CONFIG"
+  description = "Paste these values into frontend/config.js CONFIG"
   value = {
     apiBase       = aws_apigatewayv2_api.http.api_endpoint
     wsBase        = "${aws_apigatewayv2_stage.ws_prod.invoke_url}"
     cognitoDomain = "${var.cognito_domain_prefix}.auth.${var.aws_region}.amazoncognito.com"
     clientId      = aws_cognito_user_pool_client.main.id
+    userPoolId    = aws_cognito_user_pool.main.id
     redirectUri   = "https://${aws_cloudfront_distribution.frontend.domain_name}/chat.html"
   }
 }

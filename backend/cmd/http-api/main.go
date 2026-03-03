@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"chatterchat/internal/auth"
 	"chatterchat/internal/db"
@@ -30,6 +31,8 @@ func init() {
 	// auth.Middleware used as belt-and-suspenders for local dev.
 	r.Group(func(r chi.Router) {
 		r.Use(auth.Middleware)
+		r.Get("/users/me", getMeHandler)
+		r.Put("/users/me", updateMeHandler)
 		r.Get("/rooms", listRoomsHandler)
 		r.Post("/rooms", createRoomHandler)
 		r.Get("/rooms/{id}", getRoomHandler)
@@ -132,6 +135,61 @@ func getMessagesHandler(w http.ResponseWriter, r *http.Request) {
 		reversed[len(msgs)-1-i] = m
 	}
 	writeJSON(w, http.StatusOK, reversed)
+}
+
+func getMeHandler(w http.ResponseWriter, r *http.Request) {
+	claims, ok := auth.ClaimsFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	sqlDB, err := db.Get(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "db unavailable")
+		return
+	}
+	user, err := db.UpsertUser(r.Context(), sqlDB, claims.Sub, claims.Username, claims.Email)
+	if err != nil {
+		log.Printf("get me: %v", err)
+		writeError(w, http.StatusInternalServerError, "failed to get user")
+		return
+	}
+	writeJSON(w, http.StatusOK, user)
+}
+
+func updateMeHandler(w http.ResponseWriter, r *http.Request) {
+	claims, ok := auth.ClaimsFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	var body struct {
+		DisplayName string `json:"display_name"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	name := strings.TrimSpace(body.DisplayName)
+	if len(name) < 3 || len(name) > 30 {
+		writeError(w, http.StatusBadRequest, "display_name must be 3–30 characters")
+		return
+	}
+
+	sqlDB, err := db.Get(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "db unavailable")
+		return
+	}
+	user, err := db.UpdateDisplayName(r.Context(), sqlDB, claims.Sub, name)
+	if err != nil {
+		log.Printf("update display name: %v", err)
+		writeError(w, http.StatusInternalServerError, "failed to update display name")
+		return
+	}
+	writeJSON(w, http.StatusOK, user)
 }
 
 // ---- helpers ----

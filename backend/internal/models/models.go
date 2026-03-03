@@ -5,11 +5,12 @@ import (
 )
 
 type User struct {
-	ID         string    `db:"id"          json:"id"`
-	CognitoSub string    `db:"cognito_sub" json:"cognito_sub"`
-	Username   string    `db:"username"    json:"username"`
-	Email      string    `db:"email"       json:"email"`
-	CreatedAt  time.Time `db:"created_at"  json:"created_at"`
+	ID          string    `db:"id"           json:"id"`
+	CognitoSub  string    `db:"cognito_sub"  json:"cognito_sub"`
+	Username    string    `db:"username"     json:"username"`
+	Email       string    `db:"email"        json:"email"`
+	DisplayName *string   `db:"display_name" json:"display_name"`
+	CreatedAt   time.Time `db:"created_at"   json:"created_at"`
 }
 
 type Room struct {

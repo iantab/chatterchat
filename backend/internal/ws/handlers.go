@@ -21,10 +21,14 @@ func HandleConnect(ctx context.Context, sqlDB *sqlx.DB, connID, cognitoSub, user
 	if err != nil {
 		return fmt.Errorf("upsert user: %w", err)
 	}
-	if err := db.InsertConnection(ctx, sqlDB, connID, user.ID, user.Username); err != nil {
+	effectiveName := email
+	if user.DisplayName != nil && *user.DisplayName != "" {
+		effectiveName = *user.DisplayName
+	}
+	if err := db.InsertConnection(ctx, sqlDB, connID, user.ID, effectiveName); err != nil {
 		return fmt.Errorf("insert connection: %w", err)
 	}
-	log.Printf("connected: connID=%s user=%s", connID, user.Username)
+	log.Printf("connected: connID=%s user=%s", connID, effectiveName)
 	return nil
 }
 

@@ -5,11 +5,11 @@ Real-time chat application. Go backend on AWS Lambda, Vanilla JS frontend on S3 
 ```
 Browser (Vanilla JS)
    │
-   ├── PKCE → Cognito Hosted UI (auth)
+   ├── SRP → Cognito (custom auth UI, no redirect)
    ├── HTTPS → API Gateway HTTP API → Lambda (http-api) → RDS
    └── WSS  → API Gateway WebSocket API → Lambda Authorizer → Lambda (ws-handler) → RDS
-                                                                      │
-                                                         API GW Management API (broadcast)
+                                                                     │
+                                                        API GW Management API (broadcast)
 ```
 
 ## Project Structure
@@ -31,13 +31,15 @@ chatterchat/
 │   ├── go.mod
 │   └── Makefile
 ├── frontend/
-│   ├── index.html          # Login page
+│   ├── index.html          # Login page (Sign In / Create Account / Verify)
 │   ├── chat.html           # Chat UI
 │   ├── style.css
-│   ├── app.js              # PKCE auth + WebSocket + REST
+│   ├── app.js              # Auth + WebSocket + REST + display name
 │   ├── config.js           # Your config values (gitignored — copy from example)
 │   └── config.js.example   # Config template
-└── infra/                  # Terraform (AWS infrastructure)
+├── infra/                  # Terraform (AWS infrastructure)
+└── scripts/
+    └── migrate.sh          # Run DB migrations via SSM (no SSH needed)
 ```
 
 ---
@@ -91,13 +93,9 @@ Open `http://localhost:3000`.
 
 ### Prerequisites
 
-Install these tools first:
-
 - [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) + credentials configured (`aws configure`)
 - [Terraform](https://developer.hashicorp.com/terraform/install)
 - [Go 1.22+](https://go.dev/dl/) — in WSL on Windows (builds target Linux ARM64)
-- [Session Manager plugin](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html)
-- `psql` — `sudo apt install postgresql-client` in WSL
 
 ### 1. Build the Lambda zips
 
@@ -107,11 +105,6 @@ Run this in WSL (required — builds Linux ARM64 binaries):
 cd backend
 make build
 ```
-
-Produces:
-- `backend/dist/ws-handler/ws-handler.zip`
-- `backend/dist/ws-authorizer/ws-authorizer.zip`
-- `backend/dist/http-api/http-api.zip`
 
 ### 2. Configure Terraform
 
@@ -137,40 +130,21 @@ terraform init
 terraform apply
 ```
 
-Takes 15–25 minutes (RDS + CloudFront). At the end, Terraform prints outputs — save them.
+Takes 15–25 minutes (RDS + CloudFront). When done, grab your config values:
+
+```bash
+terraform output app_js_config
+```
 
 ### 4. Run database migrations
 
-RDS is in a private VPC. Use SSM port forwarding to tunnel to it from your machine.
-
-**Open the tunnel** (keep this terminal open):
+RDS is in a private VPC. The migration script handles the SSM tunnel automatically — no manual steps needed:
 
 ```bash
-aws ssm start-session \
-  --target <bastion_instance_id from outputs> \
-  --document-name AWS-StartPortForwardingSessionToRemoteHost \
-  --parameters '{"host":["<db_endpoint from outputs>"],"portNumber":["5432"],"localPortNumber":["5433"]}'
+./scripts/migrate.sh
 ```
 
-**In a new terminal, get the DB password:**
-
-```bash
-aws secretsmanager get-secret-value \
-  --secret-id chatterchat/db-credentials \
-  --query SecretString --output text
-```
-
-**Run the migrations:**
-
-```bash
-cd backend
-for f in migrations/*.sql; do
-  echo "Running $f..."
-  psql "host=localhost port=5433 dbname=chatterchat user=chatterchat password=<password> sslmode=require" -f "$f"
-done
-```
-
-Close the tunnel (`Ctrl+C`) when done. You can also terminate the bastion EC2 instance in the AWS Console to stop paying for it (~$1.50/month).
+This SSMs into the bastion, reads DB credentials from Secrets Manager, and runs all `backend/migrations/*.sql` files in order. You can terminate the bastion EC2 instance in the AWS Console afterwards to stop paying for it (~$1.50/month).
 
 ### 5. Configure and deploy the frontend
 
@@ -178,12 +152,27 @@ Close the tunnel (`Ctrl+C`) when done. You can also terminate the bastion EC2 in
 cp frontend/config.js.example frontend/config.js
 ```
 
-Fill in `frontend/config.js` with the values from `terraform output app_js_config`. Make sure `localDev: false`.
+Fill in `frontend/config.js` with the values from `terraform output app_js_config`. All fields are required:
+
+| Field | Where to get it |
+|---|---|
+| `apiBase` | `terraform output app_js_config` |
+| `wsBase` | `terraform output app_js_config` |
+| `cognitoDomain` | `terraform output app_js_config` |
+| `clientId` | `terraform output app_js_config` |
+| `userPoolId` | `terraform output app_js_config` |
+| `redirectUri` | `terraform output app_js_config` |
+
+Make sure `localDev: false`.
 
 Upload to S3:
 
 ```bash
 aws s3 sync frontend/ s3://$(terraform -chdir=infra output -raw s3_bucket_name)/ --delete
+aws cloudfront create-invalidation \
+  --distribution-id $(aws cloudfront list-distributions \
+    --query "DistributionList.Items[?Comment=='chatterchat frontend'].Id" --output text) \
+  --paths "/*"
 ```
 
 ### 6. Open the app
@@ -192,13 +181,13 @@ aws s3 sync frontend/ s3://$(terraform -chdir=infra output -raw s3_bucket_name)/
 terraform -chdir=infra output cloudfront_domain
 ```
 
-Visit that URL in your browser.
+Visit that URL. You'll see the custom Sign In / Create Account page — no redirect to Cognito's hosted UI.
 
 ---
 
 ## Redeploying after code changes
 
-**Backend:**
+**Backend** (also handles new API routes / infra changes):
 
 ```bash
 cd backend && make build
@@ -209,6 +198,12 @@ cd infra && terraform apply
 
 ```bash
 aws s3 sync frontend/ s3://$(terraform -chdir=infra output -raw s3_bucket_name)/ --delete
+```
+
+**Database migrations** (when new `.sql` files are added):
+
+```bash
+./scripts/migrate.sh
 ```
 
 ---
