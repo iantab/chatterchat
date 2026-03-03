@@ -1,50 +1,85 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ChatterChat</title>
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body class="auth-page">
-  <div class="auth-card">
-    <h1>ChatterChat</h1>
-    <p class="tagline">Real-time conversations, no friction.</p>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ChatterChat</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body class="auth-page">
+    <div class="auth-card">
+      <h1>ChatterChat</h1>
+      <p class="tagline">Real-time conversations, no friction.</p>
 
-    <!-- Tab buttons -->
-    <div class="auth-tabs">
-      <button class="auth-tab-btn active" data-tab="signin">Sign In</button>
-      <button class="auth-tab-btn" data-tab="register">Create Account</button>
+      <!-- Tab buttons -->
+      <div class="auth-tabs">
+        <button class="auth-tab-btn active" data-tab="signin">Sign In</button>
+        <button class="auth-tab-btn" data-tab="register">Create Account</button>
+      </div>
+
+      <!-- Sign In tab -->
+      <div class="auth-tab-content" id="tab-signin">
+        <input
+          id="signin-email"
+          class="auth-input"
+          type="email"
+          placeholder="Email"
+          autocomplete="email"
+        />
+        <input
+          id="signin-password"
+          class="auth-input"
+          type="password"
+          placeholder="Password"
+          autocomplete="current-password"
+        />
+        <p class="auth-error" id="signin-error"></p>
+        <button id="signin-btn" class="btn-primary auth-btn">Sign In</button>
+      </div>
+
+      <!-- Create Account tab -->
+      <div class="auth-tab-content" id="tab-register" style="display: none">
+        <input
+          id="register-email"
+          class="auth-input"
+          type="email"
+          placeholder="Email"
+          autocomplete="email"
+        />
+        <input
+          id="register-password"
+          class="auth-input"
+          type="password"
+          placeholder="Password"
+          autocomplete="new-password"
+        />
+        <p class="auth-error" id="register-error"></p>
+        <button id="register-btn" class="btn-primary auth-btn">
+          Create Account
+        </button>
+      </div>
+
+      <!-- Verify Email panel (shown after registration) -->
+      <div class="auth-tab-content" id="tab-verify" style="display: none">
+        <p class="auth-hint">We sent a verification code to your email.</p>
+        <input
+          id="verify-code"
+          class="auth-input"
+          type="text"
+          placeholder="Verification code"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+        />
+        <p class="auth-error" id="verify-error"></p>
+        <button id="verify-btn" class="btn-primary auth-btn">Verify</button>
+        <button id="resend-btn" class="btn-ghost auth-resend">
+          Resend code
+        </button>
+      </div>
     </div>
 
-    <!-- Sign In tab -->
-    <div class="auth-tab-content" id="tab-signin">
-      <input id="signin-email" class="auth-input" type="email" placeholder="Email" autocomplete="email" />
-      <input id="signin-password" class="auth-input" type="password" placeholder="Password" autocomplete="current-password" />
-      <p class="auth-error" id="signin-error"></p>
-      <button id="signin-btn" class="btn-primary auth-btn">Sign In</button>
-    </div>
-
-    <!-- Create Account tab -->
-    <div class="auth-tab-content" id="tab-register" style="display:none">
-      <input id="register-email" class="auth-input" type="email" placeholder="Email" autocomplete="email" />
-      <input id="register-password" class="auth-input" type="password" placeholder="Password" autocomplete="new-password" />
-      <p class="auth-error" id="register-error"></p>
-      <button id="register-btn" class="btn-primary auth-btn">Create Account</button>
-    </div>
-
-    <!-- Verify Email panel (shown after registration) -->
-    <div class="auth-tab-content" id="tab-verify" style="display:none">
-      <p class="auth-hint">We sent a verification code to your email.</p>
-      <input id="verify-code" class="auth-input" type="text" placeholder="Verification code" inputmode="numeric" autocomplete="one-time-code" />
-      <p class="auth-error" id="verify-error"></p>
-      <button id="verify-btn" class="btn-primary auth-btn">Verify</button>
-      <button id="resend-btn" class="btn-ghost auth-resend">Resend code</button>
-    </div>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6/dist/amazon-cognito-identity.min.js"></script>
-  <script src="config.js"></script>
-  <script src="app.js"></script>
-</body>
+    <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6/dist/amazon-cognito-identity.min.js"></script>
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+  </body>
 </html>

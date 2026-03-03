@@ -15,4 +15,13 @@ if [ -n "$UNFORMATTED" ]; then
   echo "$UNFORMATTED" | xargs git add
 fi
 
+STAGED_FRONTEND=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(js|html|css)$' || true)
+if [ -n "$STAGED_FRONTEND" ]; then
+  echo "$STAGED_FRONTEND" | xargs bunx prettier --write
+  echo "prettier: formatted the following files:"
+  echo "$STAGED_FRONTEND" | sed 's/^/  /'
+  echo "Re-staging formatted files..."
+  echo "$STAGED_FRONTEND" | xargs git add
+fi
+
 exit 0
