@@ -19,6 +19,7 @@ coverage.html
 *.pem
 *.key
 secrets.json
+frontend/config.js
 
 # Node
 node_modules/
@@ -33,8 +34,10 @@ Thumbs.db
 *.swp
 *.swo
 
-# Terraform (if added later)
+# Terraform
 *.tfstate
 *.tfstate.backup
+*.tfplan
 .terraform/
 .terraform.lock.hcl
+terraform.tfvars

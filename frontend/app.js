@@ -1,19 +1,9 @@
 /**
  * ChatterChat — frontend app
  *
- * Fill in CONFIG values after AWS setup.
+ * CONFIG is loaded from config.js (gitignored).
+ * Copy config.js.example to config.js and fill in your values.
  */
-const CONFIG = {
-  apiBase: 'https://<http-api-id>.execute-api.<region>.amazonaws.com',
-  wsBase: 'wss://<ws-api-id>.execute-api.<region>.amazonaws.com/prod',
-  cognitoDomain: '<app>.auth.<region>.amazoncognito.com',
-  clientId: '<app-client-id>',
-  redirectUri: 'https://<cf-domain>/chat.html',
-
-  localDev: false,           // set to true for local development
-  localApiBase: 'http://localhost:8080',
-  localWsBase: 'ws://localhost:8080/ws',
-};
 
 // Synthetic JWT used in local dev mode (backend ignores it; frontend uses it for UI display).
 const LOCAL_DEV_TOKEN = [

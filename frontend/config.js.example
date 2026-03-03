@@ -1,0 +1,11 @@
+const CONFIG = {
+  apiBase: 'https://<http-api-id>.execute-api.<region>.amazonaws.com',
+  wsBase: 'wss://<ws-api-id>.execute-api.<region>.amazonaws.com/prod',
+  cognitoDomain: '<cognito-domain-prefix>.auth.<region>.amazoncognito.com',
+  clientId: '<cognito-client-id>',
+  redirectUri: 'https://<cloudfront-domain>/chat.html',
+
+  localDev: false,           // set to true for local development
+  localApiBase: 'http://localhost:8080',
+  localWsBase: 'ws://localhost:8080/ws',
+};

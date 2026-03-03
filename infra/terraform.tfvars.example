@@ -1,0 +1,7 @@
+# Copy this file to terraform.tfvars and fill in your values.
+# terraform.tfvars is gitignored because it contains your DB password.
+
+aws_region            = "us-east-1"
+app_name              = "chatterchat"
+db_password           = "ChangeMe123!"       # Use something strong
+cognito_domain_prefix = "chatterchat-yourname" # Must be globally unique across ALL AWS accounts
