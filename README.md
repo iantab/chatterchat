@@ -79,7 +79,7 @@ cd frontend
 python -m http.server 3000
 ```
 
-Open `http://localhost:3000`. Make sure `CONFIG.localDev = true` is set in `app.js` (it is by default).
+Open `http://localhost:3000`. Make sure `CONFIG.localDev = true` is set in `app.js` (it is set to `false` by default).
 
 ---
 

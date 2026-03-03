@@ -10,7 +10,7 @@ const CONFIG = {
   clientId: '<app-client-id>',
   redirectUri: 'https://<cf-domain>/chat.html',
 
-  localDev: true,           // set to true for local development
+  localDev: false,           // set to true for local development
   localApiBase: 'http://localhost:8080',
   localWsBase: 'ws://localhost:8080/ws',
 };
