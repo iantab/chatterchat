@@ -1,0 +1,67 @@
+name: Deploy
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  deploy-backend:
+    name: Build & Deploy Lambdas
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+
+      - name: Build
+        working-directory: backend
+        run: make build
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Deploy ws-handler
+        run: |
+          aws lambda update-function-code \
+            --function-name chatterchat-ws-handler \
+            --zip-file fileb://backend/dist/ws-handler/ws-handler.zip
+
+      - name: Deploy ws-authorizer
+        run: |
+          aws lambda update-function-code \
+            --function-name chatterchat-ws-authorizer \
+            --zip-file fileb://backend/dist/ws-authorizer/ws-authorizer.zip
+
+      - name: Deploy http-api
+        run: |
+          aws lambda update-function-code \
+            --function-name chatterchat-http-api \
+            --zip-file fileb://backend/dist/http-api/http-api.zip
+
+  deploy-frontend:
+    name: Deploy Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Sync to S3
+        run: aws s3 sync frontend/ s3://chatterchat-frontend-395762272568/ --delete
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id E35AIJBUZU0N9E \
+            --paths "/*"
