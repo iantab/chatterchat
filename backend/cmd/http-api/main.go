@@ -10,8 +10,8 @@ import (
 	"chatterchat/internal/db"
 	"chatterchat/internal/models"
 
-	chiadapter "github.com/awslabs/aws-lambda-go-api-proxy/chi"
 	"github.com/aws/aws-lambda-go/lambda"
+	chiadapter "github.com/awslabs/aws-lambda-go-api-proxy/chi"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )

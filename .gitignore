@@ -20,6 +20,9 @@ coverage.html
 *.key
 secrets.json
 
+# Node
+node_modules/
+
 # OS
 .DS_Store
 Thumbs.db

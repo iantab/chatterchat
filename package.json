@@ -1,0 +1,24 @@
+{
+  "name": "chatterchat",
+  "version": "1.0.0",
+  "description": "Real-time chat application built with a Go backend on AWS Lambda and a Vanilla JS frontend.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepare": "husky"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iantab/chatterchat.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/iantab/chatterchat/issues"
+  },
+  "homepage": "https://github.com/iantab/chatterchat#readme",
+  "devDependencies": {
+    "husky": "^9.1.7"
+  }
+}

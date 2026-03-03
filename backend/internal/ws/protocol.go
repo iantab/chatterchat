@@ -11,7 +11,7 @@ type InboundMessage struct {
 
 // ChatMessage is broadcast to all members of a room when someone sends a message.
 type ChatMessage struct {
-	Type      string    `json:"type"`      // "message"
+	Type      string    `json:"type"` // "message"
 	ID        string    `json:"id"`
 	RoomID    string    `json:"room_id"`
 	UserID    string    `json:"user_id"`
@@ -22,21 +22,21 @@ type ChatMessage struct {
 
 // JoinedAck is sent to the client that just joined a room.
 type JoinedAck struct {
-	Type     string `json:"type"`      // "joined"
+	Type     string `json:"type"` // "joined"
 	RoomID   string `json:"room_id"`
 	RoomName string `json:"room_name"`
 }
 
 // UserEvent is broadcast to all room members when someone joins or leaves.
 type UserEvent struct {
-	Type     string `json:"type"`      // "user_joined" | "user_left"
+	Type     string `json:"type"` // "user_joined" | "user_left"
 	Username string `json:"username"`
 	RoomID   string `json:"room_id"`
 }
 
 // ErrorMessage is sent to the client when their request cannot be fulfilled.
 type ErrorMessage struct {
-	Type    string `json:"type"`    // "error"
+	Type    string `json:"type"` // "error"
 	Code    string `json:"code"`
 	Message string `json:"message"`
 }

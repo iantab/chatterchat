@@ -148,4 +148,3 @@ func sendError(ctx context.Context, endpoint, connID, code, message string) erro
 	}
 	return nil
 }
-
