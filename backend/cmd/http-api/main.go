@@ -40,7 +40,7 @@ func init() {
 }
 
 func main() {
-	lambda.Start(chiLambda.ProxyWithContext)
+	lambda.Start(chiLambda.ProxyWithContextV2)
 }
 
 // ---- handlers ----

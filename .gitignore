@@ -1,5 +1,6 @@
 # Go build output
 backend/dist/
+*.exe
 
 # Go module cache / vendor
 backend/vendor/

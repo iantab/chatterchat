@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -14,6 +15,20 @@ const ClaimsKey contextKey = "claims"
 // Returns 401 if the token is missing or invalid.
 func Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if devUser := os.Getenv("LOCAL_DEV_USER"); devUser != "" {
+			parts := strings.SplitN(devUser, ":", 3)
+			claims := &Claims{Sub: parts[0]}
+			if len(parts) > 1 {
+				claims.Username = parts[1]
+			}
+			if len(parts) > 2 {
+				claims.Email = parts[2]
+			}
+			ctx := context.WithValue(r.Context(), ClaimsKey, claims)
+			next.ServeHTTP(w, r.WithContext(ctx))
+			return
+		}
+
 		header := r.Header.Get("Authorization")
 		if !strings.HasPrefix(header, "Bearer ") {
 			http.Error(w, "missing authorization header", http.StatusUnauthorized)

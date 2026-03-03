@@ -27,8 +27,13 @@ var (
 )
 
 // GetDSN returns a cached PostgreSQL DSN fetched from Secrets Manager.
+// If DATABASE_URL is set, it is used directly (local dev shortcut).
 func GetDSN(ctx context.Context) (string, error) {
 	secretOnce.Do(func() {
+		if url := os.Getenv("DATABASE_URL"); url != "" {
+			cachedDSN = url
+			return
+		}
 		arn := os.Getenv("DB_SECRET_ARN")
 		if arn == "" {
 			secretError = fmt.Errorf("DB_SECRET_ARN env var not set")

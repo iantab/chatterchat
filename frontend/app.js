@@ -4,12 +4,31 @@
  * Fill in CONFIG values after AWS setup.
  */
 const CONFIG = {
-  apiBase:       'https://<http-api-id>.execute-api.<region>.amazonaws.com',
-  wsBase:        'wss://<ws-api-id>.execute-api.<region>.amazonaws.com/prod',
+  apiBase: 'https://<http-api-id>.execute-api.<region>.amazonaws.com',
+  wsBase: 'wss://<ws-api-id>.execute-api.<region>.amazonaws.com/prod',
   cognitoDomain: '<app>.auth.<region>.amazoncognito.com',
-  clientId:      '<app-client-id>',
-  redirectUri:   'https://<cf-domain>/chat.html',
+  clientId: '<app-client-id>',
+  redirectUri: 'https://<cf-domain>/chat.html',
+
+  localDev: true,           // set to true for local development
+  localApiBase: 'http://localhost:8080',
+  localWsBase: 'ws://localhost:8080/ws',
 };
+
+// Synthetic JWT used in local dev mode (backend ignores it; frontend uses it for UI display).
+const LOCAL_DEV_TOKEN = [
+  btoa('{"alg":"none","typ":"JWT"}'),
+  btoa(JSON.stringify({ sub: 'dev-sub-001', 'cognito:username': 'devuser', email: 'dev@local.dev', exp: 9999999999 })),
+  'localsig'
+].join('.');
+
+function apiBase() {
+  return CONFIG.localDev ? CONFIG.localApiBase : CONFIG.apiBase;
+}
+
+function wsBase() {
+  return CONFIG.localDev ? CONFIG.localWsBase : CONFIG.wsBase;
+}
 
 // ---------------------------------------------------------------------------
 // PKCE helpers
@@ -38,10 +57,10 @@ async function startLogin() {
 
   const params = new URLSearchParams({
     response_type: 'code',
-    client_id:     CONFIG.clientId,
-    redirect_uri:  CONFIG.redirectUri,
-    scope:         'openid email profile',
-    code_challenge:        challenge,
+    client_id: CONFIG.clientId,
+    redirect_uri: CONFIG.redirectUri,
+    scope: 'openid email profile',
+    code_challenge: challenge,
     code_challenge_method: 'S256',
   });
 
@@ -56,10 +75,10 @@ async function exchangeCodeForTokens(code) {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
-      grant_type:    'authorization_code',
-      client_id:     CONFIG.clientId,
+      grant_type: 'authorization_code',
+      client_id: CONFIG.clientId,
       code,
-      redirect_uri:  CONFIG.redirectUri,
+      redirect_uri: CONFIG.redirectUri,
       code_verifier: verifier,
     }),
   });
@@ -85,11 +104,11 @@ function signOut() {
 function idToken() { return sessionStorage.getItem('id_token'); }
 
 async function apiFetch(path, opts = {}) {
-  const resp = await fetch(`${CONFIG.apiBase}${path}`, {
+  const resp = await fetch(`${apiBase()}${path}`, {
     ...opts,
     headers: {
       'Content-Type': 'application/json',
-      Authorization:  `Bearer ${idToken()}`,
+      Authorization: `Bearer ${idToken()}`,
       ...(opts.headers || {}),
     },
   });
@@ -108,7 +127,7 @@ function connectWebSocket() {
   const token = idToken();
   if (!token) return;
 
-  ws = new WebSocket(`${CONFIG.wsBase}?token=${encodeURIComponent(token)}`);
+  ws = new WebSocket(`${wsBase()}?token=${encodeURIComponent(token)}`);
 
   ws.addEventListener('open', () => console.log('WS connected'));
   ws.addEventListener('close', (e) => {
@@ -195,7 +214,7 @@ function appendSystemMsg(text) {
 
 function escapeHTML(str) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;').replace(/'/g, '&#x27;');
+    .replace(/"/g, '&quot;').replace(/'/g, '&#x27;');
 }
 
 // ---------------------------------------------------------------------------
@@ -238,6 +257,13 @@ async function selectRoom(room, li) {
 // ---------------------------------------------------------------------------
 
 async function initIndexPage() {
+  // Local dev: skip PKCE entirely and go straight to chat.
+  if (CONFIG.localDev) {
+    sessionStorage.setItem('id_token', LOCAL_DEV_TOKEN);
+    window.location.href = 'chat.html';
+    return;
+  }
+
   // If already authenticated, go straight to chat.
   if (sessionStorage.getItem('id_token')) {
     window.location.href = 'chat.html';
@@ -247,10 +273,17 @@ async function initIndexPage() {
 }
 
 async function initChatPage() {
+  // Local dev: ensure synthetic token is set and skip the Cognito code exchange.
+  if (CONFIG.localDev) {
+    if (!sessionStorage.getItem('id_token')) {
+      sessionStorage.setItem('id_token', LOCAL_DEV_TOKEN);
+    }
+  }
+
   // Handle redirect back from Cognito.
   const params = new URLSearchParams(window.location.search);
   const code = params.get('code');
-  if (code) {
+  if (!CONFIG.localDev && code) {
     history.replaceState({}, '', window.location.pathname);
     try {
       const tokens = await exchangeCodeForTokens(code);

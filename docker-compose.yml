@@ -1,0 +1,31 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: chatterchat
+      POSTGRES_PASSWORD: chatterchat
+      POSTGRES_DB: chatterchat
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chatterchat -d chatterchat"]
+      interval: 2s
+      retries: 10
+    networks: [chatterchat]
+
+  migrate:
+    image: postgres:16-alpine
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment: { PGPASSWORD: chatterchat }
+    volumes: ["./backend/migrations:/migrations:ro"]
+    entrypoint: >
+      sh -c "for f in /migrations/*.sql; do psql -h postgres -U chatterchat -d chatterchat -f $$f; done; echo done"
+    restart: "no"
+    networks: [chatterchat]
+
+volumes:
+  pgdata:
+
+networks:
+  chatterchat:

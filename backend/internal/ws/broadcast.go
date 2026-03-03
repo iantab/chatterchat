@@ -14,6 +14,10 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+// LocalSender, if non-nil, bypasses PostToConnection for local dev.
+// Set once at startup by cmd/local/main.go before any connections arrive.
+var LocalSender func(ctx context.Context, connID string, data []byte) error
+
 // newAPIGWClient creates an API Gateway Management API client for the given endpoint.
 func newAPIGWClient(ctx context.Context, endpoint string) (*apigatewaymanagementapi.Client, error) {
 	cfg, err := config.LoadDefaultConfig(ctx)
@@ -37,6 +41,15 @@ func BroadcastToRoom(ctx context.Context, sqlDB *sqlx.DB, endpoint, roomID strin
 	conns, err := db.GetConnectionsByRoom(ctx, sqlDB, roomID)
 	if err != nil {
 		return fmt.Errorf("get room connections: %w", err)
+	}
+
+	if LocalSender != nil {
+		for _, conn := range conns {
+			if err := LocalSender(ctx, conn.ConnectionID, data); err != nil {
+				log.Printf("local send to %s failed: %v", conn.ConnectionID, err)
+			}
+		}
+		return nil
 	}
 
 	client, err := newAPIGWClient(ctx, endpoint)
@@ -69,6 +82,10 @@ func SendToConnection(ctx context.Context, endpoint, connID string, payload any)
 	data, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("marshal payload: %w", err)
+	}
+
+	if LocalSender != nil {
+		return LocalSender(ctx, connID, data)
 	}
 
 	client, err := newAPIGWClient(ctx, endpoint)

@@ -67,7 +67,9 @@ func ValidateToken(ctx context.Context, tokenString string) (*Claims, error) {
 	username, _ := token.Get("cognito:username")
 	usernameStr, _ := username.(string)
 	if usernameStr == "" {
-		usernameStr, _ = token.Get("name").(string)
+		if nameVal, ok := token.Get("name"); ok {
+			usernameStr, _ = nameVal.(string)
+		}
 	}
 
 	email, _ := token.Get("email")
