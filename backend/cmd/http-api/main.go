@@ -53,12 +53,12 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func listRoomsHandler(w http.ResponseWriter, r *http.Request) {
-	sqlDB, err := db.Get(r.Context())
+	client, err := db.Get(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "db unavailable")
 		return
 	}
-	rooms, err := db.GetRooms(r.Context(), sqlDB)
+	rooms, err := db.GetRooms(r.Context(), client)
 	if err != nil {
 		log.Printf("list rooms: %v", err)
 		writeError(w, http.StatusInternalServerError, "failed to list rooms")
@@ -77,12 +77,12 @@ func createRoomHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sqlDB, err := db.Get(r.Context())
+	client, err := db.Get(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "db unavailable")
 		return
 	}
-	room, err := db.CreateRoom(r.Context(), sqlDB, body.Name, body.Description)
+	room, err := db.CreateRoom(r.Context(), client, body.Name, body.Description)
 	if err != nil {
 		log.Printf("create room: %v", err)
 		writeError(w, http.StatusInternalServerError, "failed to create room")
@@ -93,12 +93,12 @@ func createRoomHandler(w http.ResponseWriter, r *http.Request) {
 
 func getRoomHandler(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	sqlDB, err := db.Get(r.Context())
+	client, err := db.Get(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "db unavailable")
 		return
 	}
-	room, err := db.GetRoomByID(r.Context(), sqlDB, id)
+	room, err := db.GetRoomByID(r.Context(), client, id)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "room not found")
 		return
@@ -110,7 +110,7 @@ func getMessagesHandler(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 
-	sqlDB, err := db.Get(r.Context())
+	client, err := db.Get(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "db unavailable")
 		return
@@ -118,12 +118,12 @@ func getMessagesHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Ensure user exists in DB — upsert on first read.
 	if claims, ok := auth.ClaimsFromContext(r.Context()); ok {
-		if _, err := db.UpsertUser(r.Context(), sqlDB, claims.Sub, claims.Username, claims.Email); err != nil {
+		if _, err := db.UpsertUser(r.Context(), client, claims.Sub, claims.Username, claims.Email); err != nil {
 			log.Printf("upsert user on message read: %v", err)
 		}
 	}
 
-	msgs, err := db.GetMessagesByRoom(r.Context(), sqlDB, id, limit)
+	msgs, err := db.GetMessagesByRoom(r.Context(), client, id, limit)
 	if err != nil {
 		log.Printf("get messages: %v", err)
 		writeError(w, http.StatusInternalServerError, "failed to get messages")
@@ -143,12 +143,12 @@ func getMeHandler(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	sqlDB, err := db.Get(r.Context())
+	client, err := db.Get(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "db unavailable")
 		return
 	}
-	user, err := db.UpsertUser(r.Context(), sqlDB, claims.Sub, claims.Username, claims.Email)
+	user, err := db.UpsertUser(r.Context(), client, claims.Sub, claims.Username, claims.Email)
 	if err != nil {
 		log.Printf("get me: %v", err)
 		writeError(w, http.StatusInternalServerError, "failed to get user")
@@ -178,12 +178,12 @@ func updateMeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sqlDB, err := db.Get(r.Context())
+	client, err := db.Get(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "db unavailable")
 		return
 	}
-	user, err := db.UpdateDisplayName(r.Context(), sqlDB, claims.Sub, name)
+	user, err := db.UpdateDisplayName(r.Context(), client, claims.Sub, name)
 	if err != nil {
 		log.Printf("update display name: %v", err)
 		writeError(w, http.StatusInternalServerError, "failed to update display name")

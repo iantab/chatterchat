@@ -19,7 +19,7 @@ func handler(ctx context.Context, event events.APIGatewayWebsocketProxyRequest) 
 	domain := rc.DomainName
 	stage := rc.Stage
 
-	sqlDB, err := db.Get(ctx)
+	client, err := db.Get(ctx)
 	if err != nil {
 		log.Printf("db init error: %v", err)
 		return serverError(), nil
@@ -30,13 +30,13 @@ func handler(ctx context.Context, event events.APIGatewayWebsocketProxyRequest) 
 		sub := stringFromCtx(rc.Authorizer, "sub")
 		username := stringFromCtx(rc.Authorizer, "username")
 		email := stringFromCtx(rc.Authorizer, "email")
-		if err := ws.HandleConnect(ctx, sqlDB, connID, sub, username, email); err != nil {
+		if err := ws.HandleConnect(ctx, client, connID, sub, username, email); err != nil {
 			log.Printf("HandleConnect error: %v", err)
 			return serverError(), nil
 		}
 
 	case "$disconnect":
-		if err := ws.HandleDisconnect(ctx, sqlDB, domain, stage, connID); err != nil {
+		if err := ws.HandleDisconnect(ctx, client, domain, stage, connID); err != nil {
 			log.Printf("HandleDisconnect error: %v", err)
 		}
 
@@ -57,7 +57,7 @@ func handler(ctx context.Context, event events.APIGatewayWebsocketProxyRequest) 
 			if msg.RoomID == "" {
 				return events.APIGatewayProxyResponse{StatusCode: 400, Body: `{"error":"room_id required"}`}, nil
 			}
-			if err := ws.HandleJoinRoom(ctx, sqlDB, domain, stage, connID, msg.RoomID); err != nil {
+			if err := ws.HandleJoinRoom(ctx, client, domain, stage, connID, msg.RoomID); err != nil {
 				log.Printf("HandleJoinRoom error: %v", err)
 				return serverError(), nil
 			}
@@ -66,7 +66,7 @@ func handler(ctx context.Context, event events.APIGatewayWebsocketProxyRequest) 
 			if msg.RoomID == "" || msg.Body == "" {
 				return events.APIGatewayProxyResponse{StatusCode: 400, Body: `{"error":"room_id and body required"}`}, nil
 			}
-			if err := ws.HandleSendMessage(ctx, sqlDB, domain, stage, connID, msg.RoomID, msg.Body); err != nil {
+			if err := ws.HandleSendMessage(ctx, client, domain, stage, connID, msg.RoomID, msg.Body); err != nil {
 				log.Printf("HandleSendMessage error: %v", err)
 				return serverError(), nil
 			}

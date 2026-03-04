@@ -5,15 +5,13 @@
 
 locals {
   lambda_env = {
-    DB_SECRET_ARN        = aws_secretsmanager_secret.db.arn
+    USERS_TABLE       = aws_dynamodb_table.users.name
+    ROOMS_TABLE       = aws_dynamodb_table.rooms.name
+    MESSAGES_TABLE    = aws_dynamodb_table.messages.name
+    CONNECTIONS_TABLE = aws_dynamodb_table.connections.name
     COGNITO_REGION       = var.aws_region
     COGNITO_USER_POOL_ID = aws_cognito_user_pool.main.id
     COGNITO_CLIENT_ID    = aws_cognito_user_pool_client.main.id
-  }
-
-  lambda_vpc_config = {
-    subnet_ids         = aws_subnet.private[*].id
-    security_group_ids = [aws_security_group.lambda.id]
   }
 }
 
@@ -35,11 +33,6 @@ resource "aws_lambda_function" "ws_handler" {
 
   environment {
     variables = local.lambda_env
-  }
-
-  vpc_config {
-    subnet_ids         = local.lambda_vpc_config.subnet_ids
-    security_group_ids = local.lambda_vpc_config.security_group_ids
   }
 
   tags = { Name = "${var.app_name}-ws-handler" }
@@ -65,11 +58,6 @@ resource "aws_lambda_function" "ws_authorizer" {
     variables = local.lambda_env
   }
 
-  vpc_config {
-    subnet_ids         = local.lambda_vpc_config.subnet_ids
-    security_group_ids = local.lambda_vpc_config.security_group_ids
-  }
-
   tags = { Name = "${var.app_name}-ws-authorizer" }
 }
 
@@ -91,11 +79,6 @@ resource "aws_lambda_function" "http_api" {
 
   environment {
     variables = local.lambda_env
-  }
-
-  vpc_config {
-    subnet_ids         = local.lambda_vpc_config.subnet_ids
-    security_group_ids = local.lambda_vpc_config.security_group_ids
   }
 
   tags = { Name = "${var.app_name}-http-api" }

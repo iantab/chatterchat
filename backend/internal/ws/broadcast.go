@@ -11,7 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/apigatewaymanagementapi"
-	"github.com/jmoiron/sqlx"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 )
 
 // LocalSender, if non-nil, bypasses PostToConnection for local dev.
@@ -32,13 +32,13 @@ func newAPIGWClient(ctx context.Context, endpoint string) (*apigatewaymanagement
 
 // BroadcastToRoom sends payload to all connections in roomID.
 // Stale connections (410 Gone) are removed from the DB.
-func BroadcastToRoom(ctx context.Context, sqlDB *sqlx.DB, endpoint, roomID string, payload any) error {
+func BroadcastToRoom(ctx context.Context, client *dynamodb.Client, endpoint, roomID string, payload any) error {
 	data, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("marshal payload: %w", err)
 	}
 
-	conns, err := db.GetConnectionsByRoom(ctx, sqlDB, roomID)
+	conns, err := db.GetConnectionsByRoom(ctx, client, roomID)
 	if err != nil {
 		return fmt.Errorf("get room connections: %w", err)
 	}
@@ -52,13 +52,13 @@ func BroadcastToRoom(ctx context.Context, sqlDB *sqlx.DB, endpoint, roomID strin
 		return nil
 	}
 
-	client, err := newAPIGWClient(ctx, endpoint)
+	apiClient, err := newAPIGWClient(ctx, endpoint)
 	if err != nil {
 		return err
 	}
 
 	for _, conn := range conns {
-		_, err := client.PostToConnection(ctx, &apigatewaymanagementapi.PostToConnectionInput{
+		_, err := apiClient.PostToConnection(ctx, &apigatewaymanagementapi.PostToConnectionInput{
 			ConnectionId: aws.String(conn.ConnectionID),
 			Data:         data,
 		})
@@ -66,7 +66,7 @@ func BroadcastToRoom(ctx context.Context, sqlDB *sqlx.DB, endpoint, roomID strin
 			// Check for 410 Gone — connection no longer exists.
 			if isGone(err) {
 				log.Printf("stale connection %s, removing from DB", conn.ConnectionID)
-				if delErr := db.DeleteConnection(ctx, sqlDB, conn.ConnectionID); delErr != nil {
+				if delErr := db.DeleteConnection(ctx, client, conn.ConnectionID); delErr != nil {
 					log.Printf("failed to delete stale connection %s: %v", conn.ConnectionID, delErr)
 				}
 			} else {

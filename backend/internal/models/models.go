@@ -5,34 +5,35 @@ import (
 )
 
 type User struct {
-	ID          string    `db:"id"           json:"id"`
-	CognitoSub  string    `db:"cognito_sub"  json:"cognito_sub"`
-	Username    string    `db:"username"     json:"username"`
-	Email       string    `db:"email"        json:"email"`
-	DisplayName *string   `db:"display_name" json:"display_name"`
-	CreatedAt   time.Time `db:"created_at"   json:"created_at"`
+	ID          string    `dynamodbav:"id"                     json:"id"`
+	CognitoSub  string    `dynamodbav:"cognito_sub"            json:"cognito_sub"`
+	Username    string    `dynamodbav:"username"               json:"username"`
+	Email       string    `dynamodbav:"email"                  json:"email"`
+	DisplayName *string   `dynamodbav:"display_name,omitempty" json:"display_name"`
+	CreatedAt   time.Time `dynamodbav:"created_at"             json:"created_at"`
 }
 
 type Room struct {
-	ID          string    `db:"id"          json:"id"`
-	Name        string    `db:"name"        json:"name"`
-	Description *string   `db:"description" json:"description"`
-	CreatedAt   time.Time `db:"created_at"  json:"created_at"`
+	ID          string    `dynamodbav:"id"                     json:"id"`
+	Name        string    `dynamodbav:"name"                   json:"name"`
+	Description *string   `dynamodbav:"description,omitempty"  json:"description"`
+	CreatedAt   time.Time `dynamodbav:"created_at"             json:"created_at"`
 }
 
 type Message struct {
-	ID        string    `db:"id"         json:"id"`
-	RoomID    string    `db:"room_id"    json:"room_id"`
-	UserID    string    `db:"user_id"    json:"user_id"`
-	Username  string    `db:"username"   json:"username"`
-	Body      string    `db:"body"       json:"body"`
-	CreatedAt time.Time `db:"created_at" json:"created_at"`
+	ID        string    `dynamodbav:"id"         json:"id"`
+	RoomID    string    `dynamodbav:"room_id"    json:"room_id"`
+	TsID      string    `dynamodbav:"ts_id"      json:"-"`
+	UserID    string    `dynamodbav:"user_id"    json:"user_id"`
+	Username  string    `dynamodbav:"username"   json:"username"`
+	Body      string    `dynamodbav:"body"       json:"body"`
+	CreatedAt time.Time `dynamodbav:"created_at" json:"created_at"`
 }
 
 type Connection struct {
-	ConnectionID string    `db:"connection_id" json:"connection_id"`
-	UserID       string    `db:"user_id"       json:"user_id"`
-	Username     string    `db:"username"      json:"username"`
-	RoomID       *string   `db:"room_id"       json:"room_id"`
-	ConnectedAt  time.Time `db:"connected_at"  json:"connected_at"`
+	ConnectionID string    `dynamodbav:"connection_id"          json:"connection_id"`
+	UserID       string    `dynamodbav:"user_id"                json:"user_id"`
+	Username     string    `dynamodbav:"username"               json:"username"`
+	RoomID       *string   `dynamodbav:"room_id,omitempty"      json:"room_id"`
+	ConnectedAt  time.Time `dynamodbav:"connected_at"           json:"connected_at"`
 }

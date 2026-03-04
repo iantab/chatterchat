@@ -1,6 +1,5 @@
 # ---------------------------------------------------------------------------
-# Outputs — after `terraform apply`, these are the values you need to
-# paste into frontend/app.js CONFIG and to run the DB migrations.
+# Outputs — after `terraform apply`, paste these into frontend/config.js
 # ---------------------------------------------------------------------------
 
 output "app_js_config" {
@@ -25,12 +24,12 @@ output "cloudfront_domain" {
   value       = "https://${aws_cloudfront_distribution.frontend.domain_name}"
 }
 
-output "db_endpoint" {
-  description = "RDS endpoint (for running migrations via bastion or SSM)"
-  value       = aws_db_instance.main.address
-}
-
-output "db_secret_arn" {
-  description = "Secrets Manager ARN (already set as Lambda env var automatically)"
-  value       = aws_secretsmanager_secret.db.arn
+output "dynamodb_table_names" {
+  description = "DynamoDB table names (set automatically as Lambda env vars)"
+  value = {
+    users       = aws_dynamodb_table.users.name
+    rooms       = aws_dynamodb_table.rooms.name
+    messages    = aws_dynamodb_table.messages.name
+    connections = aws_dynamodb_table.connections.name
+  }
 }

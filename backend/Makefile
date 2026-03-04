@@ -25,6 +25,9 @@ tidy:
 	go mod tidy
 
 run-local:
-	DATABASE_URL="host=localhost port=5432 user=chatterchat password=chatterchat dbname=chatterchat sslmode=disable" \
+	USERS_TABLE=chatterchat-users \
+	ROOMS_TABLE=chatterchat-rooms \
+	MESSAGES_TABLE=chatterchat-messages \
+	CONNECTIONS_TABLE=chatterchat-connections \
 	LOCAL_DEV_USER="dev-001:alice:alice@local.dev" \
 	go run ./cmd/local/

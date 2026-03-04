@@ -10,12 +10,6 @@ variable "app_name" {
   default     = "chatterchat"
 }
 
-variable "db_password" {
-  description = "Master password for the RDS PostgreSQL instance. Pick something strong."
-  type        = string
-  sensitive   = true
-}
-
 variable "cognito_domain_prefix" {
   description = <<-EOT
     Globally-unique prefix for the Cognito hosted-UI domain.

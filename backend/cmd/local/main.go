@@ -129,14 +129,14 @@ func wsHandler(registry *ConnRegistry) http.HandlerFunc {
 		sub, username, email := devUser()
 
 		ctx := context.Background()
-		sqlDB, err := db.Get(ctx)
+		client, err := db.Get(ctx)
 		if err != nil {
 			log.Printf("ws db: %v", err)
 			conn.Close()
 			return
 		}
 
-		if err := ws.HandleConnect(ctx, sqlDB, connID, sub, username, email); err != nil {
+		if err := ws.HandleConnect(ctx, client, connID, sub, username, email); err != nil {
 			log.Printf("HandleConnect: %v", err)
 			conn.Close()
 			return
@@ -145,7 +145,7 @@ func wsHandler(registry *ConnRegistry) http.HandlerFunc {
 		registry.Add(connID, conn)
 
 		defer func() {
-			if err := ws.HandleDisconnect(ctx, sqlDB, "localhost", "local", connID); err != nil {
+			if err := ws.HandleDisconnect(ctx, client, "localhost", "local", connID); err != nil {
 				log.Printf("HandleDisconnect: %v", err)
 			}
 			registry.Remove(connID)
@@ -164,11 +164,11 @@ func wsHandler(registry *ConnRegistry) http.HandlerFunc {
 			}
 			switch msg.Action {
 			case "joinRoom":
-				if err := ws.HandleJoinRoom(ctx, sqlDB, "localhost", "local", connID, msg.RoomID); err != nil {
+				if err := ws.HandleJoinRoom(ctx, client, "localhost", "local", connID, msg.RoomID); err != nil {
 					log.Printf("HandleJoinRoom: %v", err)
 				}
 			case "sendMessage":
-				if err := ws.HandleSendMessage(ctx, sqlDB, "localhost", "local", connID, msg.RoomID, msg.Body); err != nil {
+				if err := ws.HandleSendMessage(ctx, client, "localhost", "local", connID, msg.RoomID, msg.Body); err != nil {
 					log.Printf("HandleSendMessage: %v", err)
 				}
 			case "ping":
@@ -205,12 +205,12 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func listRoomsHandler(w http.ResponseWriter, r *http.Request) {
-	sqlDB, err := db.Get(r.Context())
+	client, err := db.Get(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "db unavailable")
 		return
 	}
-	rooms, err := db.GetRooms(r.Context(), sqlDB)
+	rooms, err := db.GetRooms(r.Context(), client)
 	if err != nil {
 		log.Printf("list rooms: %v", err)
 		writeError(w, http.StatusInternalServerError, "failed to list rooms")
@@ -229,12 +229,12 @@ func createRoomHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sqlDB, err := db.Get(r.Context())
+	client, err := db.Get(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "db unavailable")
 		return
 	}
-	room, err := db.CreateRoom(r.Context(), sqlDB, body.Name, body.Description)
+	room, err := db.CreateRoom(r.Context(), client, body.Name, body.Description)
 	if err != nil {
 		log.Printf("create room: %v", err)
 		writeError(w, http.StatusInternalServerError, "failed to create room")
@@ -245,12 +245,12 @@ func createRoomHandler(w http.ResponseWriter, r *http.Request) {
 
 func getRoomHandler(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	sqlDB, err := db.Get(r.Context())
+	client, err := db.Get(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "db unavailable")
 		return
 	}
-	room, err := db.GetRoomByID(r.Context(), sqlDB, id)
+	room, err := db.GetRoomByID(r.Context(), client, id)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "room not found")
 		return
@@ -262,19 +262,19 @@ func getMessagesHandler(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 
-	sqlDB, err := db.Get(r.Context())
+	client, err := db.Get(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "db unavailable")
 		return
 	}
 
 	if claims, ok := auth.ClaimsFromContext(r.Context()); ok {
-		if _, err := db.UpsertUser(r.Context(), sqlDB, claims.Sub, claims.Username, claims.Email); err != nil {
+		if _, err := db.UpsertUser(r.Context(), client, claims.Sub, claims.Username, claims.Email); err != nil {
 			log.Printf("upsert user on message read: %v", err)
 		}
 	}
 
-	msgs, err := db.GetMessagesByRoom(r.Context(), sqlDB, id, limit)
+	msgs, err := db.GetMessagesByRoom(r.Context(), client, id, limit)
 	if err != nil {
 		log.Printf("get messages: %v", err)
 		writeError(w, http.StatusInternalServerError, "failed to get messages")

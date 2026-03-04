@@ -7,7 +7,7 @@ import (
 
 	"chatterchat/internal/db"
 
-	"github.com/jmoiron/sqlx"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 )
 
 // mgmtEndpoint builds the API Gateway Management API base URL from domain+stage.
@@ -16,8 +16,8 @@ func mgmtEndpoint(domain, stage string) string {
 }
 
 // HandleConnect upserts the user and records the connection.
-func HandleConnect(ctx context.Context, sqlDB *sqlx.DB, connID, cognitoSub, username, email string) error {
-	user, err := db.UpsertUser(ctx, sqlDB, cognitoSub, username, email)
+func HandleConnect(ctx context.Context, client *dynamodb.Client, connID, cognitoSub, username, email string) error {
+	user, err := db.UpsertUser(ctx, client, cognitoSub, username, email)
 	if err != nil {
 		return fmt.Errorf("upsert user: %w", err)
 	}
@@ -25,7 +25,7 @@ func HandleConnect(ctx context.Context, sqlDB *sqlx.DB, connID, cognitoSub, user
 	if user.DisplayName != nil && *user.DisplayName != "" {
 		effectiveName = *user.DisplayName
 	}
-	if err := db.InsertConnection(ctx, sqlDB, connID, user.ID, effectiveName); err != nil {
+	if err := db.InsertConnection(ctx, client, connID, user.ID, effectiveName); err != nil {
 		return fmt.Errorf("insert connection: %w", err)
 	}
 	log.Printf("connected: connID=%s user=%s", connID, effectiveName)
@@ -33,8 +33,8 @@ func HandleConnect(ctx context.Context, sqlDB *sqlx.DB, connID, cognitoSub, user
 }
 
 // HandleDisconnect removes the connection and notifies the room if the user was in one.
-func HandleDisconnect(ctx context.Context, sqlDB *sqlx.DB, domain, stage, connID string) error {
-	conn, err := db.GetConnection(ctx, sqlDB, connID)
+func HandleDisconnect(ctx context.Context, client *dynamodb.Client, domain, stage, connID string) error {
+	conn, err := db.GetConnection(ctx, client, connID)
 	if err != nil {
 		// Connection may not exist (e.g. auth failed before insert). Not fatal.
 		log.Printf("disconnect: connection %s not found: %v", connID, err)
@@ -48,12 +48,12 @@ func HandleDisconnect(ctx context.Context, sqlDB *sqlx.DB, domain, stage, connID
 			RoomID:   *conn.RoomID,
 		}
 		endpoint := mgmtEndpoint(domain, stage)
-		if err := BroadcastToRoom(ctx, sqlDB, endpoint, *conn.RoomID, event); err != nil {
+		if err := BroadcastToRoom(ctx, client, endpoint, *conn.RoomID, event); err != nil {
 			log.Printf("broadcast user_left failed: %v", err)
 		}
 	}
 
-	if err := db.DeleteConnection(ctx, sqlDB, connID); err != nil {
+	if err := db.DeleteConnection(ctx, client, connID); err != nil {
 		return fmt.Errorf("delete connection: %w", err)
 	}
 	log.Printf("disconnected: connID=%s user=%s", connID, conn.Username)
@@ -61,15 +61,15 @@ func HandleDisconnect(ctx context.Context, sqlDB *sqlx.DB, domain, stage, connID
 }
 
 // HandleJoinRoom moves the connection into a room and broadcasts user_joined.
-func HandleJoinRoom(ctx context.Context, sqlDB *sqlx.DB, domain, stage, connID, roomID string) error {
+func HandleJoinRoom(ctx context.Context, client *dynamodb.Client, domain, stage, connID, roomID string) error {
 	endpoint := mgmtEndpoint(domain, stage)
 
-	room, err := db.GetRoomByID(ctx, sqlDB, roomID)
+	room, err := db.GetRoomByID(ctx, client, roomID)
 	if err != nil {
 		return sendError(ctx, endpoint, connID, "INVALID_ROOM", "Room not found")
 	}
 
-	conn, err := db.GetConnection(ctx, sqlDB, connID)
+	conn, err := db.GetConnection(ctx, client, connID)
 	if err != nil {
 		return fmt.Errorf("get connection: %w", err)
 	}
@@ -77,12 +77,12 @@ func HandleJoinRoom(ctx context.Context, sqlDB *sqlx.DB, domain, stage, connID, 
 	// Leave old room if necessary.
 	if conn.RoomID != nil && *conn.RoomID != roomID {
 		leaveEvent := UserEvent{Type: "user_left", Username: conn.Username, RoomID: *conn.RoomID}
-		if err := BroadcastToRoom(ctx, sqlDB, endpoint, *conn.RoomID, leaveEvent); err != nil {
+		if err := BroadcastToRoom(ctx, client, endpoint, *conn.RoomID, leaveEvent); err != nil {
 			log.Printf("broadcast user_left (old room) failed: %v", err)
 		}
 	}
 
-	if err := db.SetConnectionRoom(ctx, sqlDB, connID, roomID); err != nil {
+	if err := db.SetConnectionRoom(ctx, client, connID, roomID); err != nil {
 		return fmt.Errorf("set connection room: %w", err)
 	}
 
@@ -94,7 +94,7 @@ func HandleJoinRoom(ctx context.Context, sqlDB *sqlx.DB, domain, stage, connID, 
 
 	// Notify room members.
 	joinEvent := UserEvent{Type: "user_joined", Username: conn.Username, RoomID: roomID}
-	if err := BroadcastToRoom(ctx, sqlDB, endpoint, roomID, joinEvent); err != nil {
+	if err := BroadcastToRoom(ctx, client, endpoint, roomID, joinEvent); err != nil {
 		log.Printf("broadcast user_joined failed: %v", err)
 	}
 
@@ -102,14 +102,14 @@ func HandleJoinRoom(ctx context.Context, sqlDB *sqlx.DB, domain, stage, connID, 
 }
 
 // HandleSendMessage persists a message and broadcasts it to the room.
-func HandleSendMessage(ctx context.Context, sqlDB *sqlx.DB, domain, stage, connID, roomID, body string) error {
+func HandleSendMessage(ctx context.Context, client *dynamodb.Client, domain, stage, connID, roomID, body string) error {
 	endpoint := mgmtEndpoint(domain, stage)
 
 	if body == "" {
 		return sendError(ctx, endpoint, connID, "EMPTY_MESSAGE", "Message body cannot be empty")
 	}
 
-	conn, err := db.GetConnection(ctx, sqlDB, connID)
+	conn, err := db.GetConnection(ctx, client, connID)
 	if err != nil {
 		return fmt.Errorf("get connection: %w", err)
 	}
@@ -118,11 +118,11 @@ func HandleSendMessage(ctx context.Context, sqlDB *sqlx.DB, domain, stage, connI
 		return sendError(ctx, endpoint, connID, "NOT_IN_ROOM", "You must join the room before sending messages")
 	}
 
-	if _, err := db.GetRoomByID(ctx, sqlDB, roomID); err != nil {
+	if _, err := db.GetRoomByID(ctx, client, roomID); err != nil {
 		return sendError(ctx, endpoint, connID, "INVALID_ROOM", "Room not found")
 	}
 
-	msg, err := db.InsertMessage(ctx, sqlDB, roomID, conn.UserID, conn.Username, body)
+	msg, err := db.InsertMessage(ctx, client, roomID, conn.UserID, conn.Username, body)
 	if err != nil {
 		return fmt.Errorf("insert message: %w", err)
 	}
@@ -136,7 +136,7 @@ func HandleSendMessage(ctx context.Context, sqlDB *sqlx.DB, domain, stage, connI
 		Body:      msg.Body,
 		CreatedAt: msg.CreatedAt,
 	}
-	if err := BroadcastToRoom(ctx, sqlDB, endpoint, roomID, chatMsg); err != nil {
+	if err := BroadcastToRoom(ctx, client, endpoint, roomID, chatMsg); err != nil {
 		log.Printf("broadcast message failed: %v", err)
 	}
 

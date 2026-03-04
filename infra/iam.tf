@@ -27,25 +27,33 @@ resource "aws_iam_role_policy_attachment" "lambda_basic" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
-# VPC access (create/delete ENIs so Lambda can reach private subnets)
-resource "aws_iam_role_policy_attachment" "lambda_vpc" {
-  role       = aws_iam_role.lambda.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
-}
+# ---- DynamoDB access ----
 
-# ---- Secrets Manager — read the DB secret ----
-
-data "aws_iam_policy_document" "read_db_secret" {
+data "aws_iam_policy_document" "dynamodb_access" {
   statement {
-    actions   = ["secretsmanager:GetSecretValue"]
-    resources = [aws_secretsmanager_secret.db.arn]
+    actions = [
+      "dynamodb:GetItem",
+      "dynamodb:PutItem",
+      "dynamodb:UpdateItem",
+      "dynamodb:DeleteItem",
+      "dynamodb:Query",
+      "dynamodb:Scan",
+    ]
+    resources = [
+      aws_dynamodb_table.users.arn,
+      aws_dynamodb_table.rooms.arn,
+      "${aws_dynamodb_table.rooms.arn}/index/*",
+      aws_dynamodb_table.messages.arn,
+      aws_dynamodb_table.connections.arn,
+      "${aws_dynamodb_table.connections.arn}/index/*",
+    ]
   }
 }
 
-resource "aws_iam_role_policy" "read_db_secret" {
-  name   = "read-db-secret"
+resource "aws_iam_role_policy" "dynamodb_access" {
+  name   = "dynamodb-access"
   role   = aws_iam_role.lambda.id
-  policy = data.aws_iam_policy_document.read_db_secret.json
+  policy = data.aws_iam_policy_document.dynamodb_access.json
 }
 
 # ---- WebSocket push (ws-handler only) ----
