@@ -6,8 +6,8 @@ Real-time chat application. Go backend on AWS Lambda, Vanilla JS frontend on S3 
 Browser (Vanilla JS)
    │
    ├── SRP → Cognito (custom auth UI, no redirect)
-   ├── HTTPS → API Gateway HTTP API → Lambda (http-api) → RDS
-   └── WSS  → API Gateway WebSocket API → Lambda Authorizer → Lambda (ws-handler) → RDS
+   ├── HTTPS → API Gateway HTTP API → Lambda (http-api) → DynamoDB
+   └── WSS  → API Gateway WebSocket API → Lambda Authorizer → Lambda (ws-handler) → DynamoDB
                                                                      │
                                                         API GW Management API (broadcast)
 ```
@@ -27,7 +27,6 @@ chatterchat/
 │   │   ├── db/             # DB pool, secrets, queries
 │   │   ├── models/         # Shared data structs
 │   │   └── ws/             # WS protocol, broadcast, handlers
-│   ├── migrations/         # SQL files, run in order
 │   ├── go.mod
 │   └── Makefile
 ├── frontend/
@@ -37,31 +36,21 @@ chatterchat/
 │   ├── app.js              # Auth + WebSocket + REST + display name
 │   ├── config.js           # Your config values (gitignored — copy from example)
 │   └── config.js.example   # Config template
-├── infra/                  # Terraform (AWS infrastructure)
-└── scripts/
-    └── migrate.sh          # Run DB migrations via SSM (no SSH needed)
+└── infra/                  # Terraform (AWS infrastructure)
 ```
 
 ---
 
 ## Local Development
 
-No AWS account needed. Runs fully locally with Docker for Postgres.
+No AWS account needed. Auth is bypassed via a fake local user.
 
 ### Prerequisites
 
-- [Docker](https://docs.docker.com/get-docker/)
 - [Go 1.22+](https://go.dev/dl/)
-- Python 3 (for serving the frontend)
+- Any static file server (e.g. `python -m http.server`, `npx serve`, VS Code Live Server)
 
-### 1. Start Postgres + run migrations
-
-```bash
-docker-compose up -d postgres
-docker-compose run --rm migrate
-```
-
-### 2. Start the backend
+### 1. Start the backend
 
 ```bash
 cd backend
@@ -70,7 +59,7 @@ make run-local
 
 The server listens on `http://localhost:8080`. Auth is bypassed — a fake user is injected via `LOCAL_DEV_USER`.
 
-### 3. Configure the frontend
+### 2. Configure the frontend
 
 ```bash
 cp frontend/config.js.example frontend/config.js
@@ -78,7 +67,7 @@ cp frontend/config.js.example frontend/config.js
 
 Open `frontend/config.js` and set `localDev: true`.
 
-### 4. Serve the frontend
+### 3. Serve the frontend
 
 ```bash
 cd frontend
@@ -118,7 +107,6 @@ Edit `terraform.tfvars`:
 ```hcl
 aws_region            = "us-east-1"
 app_name              = "chatterchat"
-db_password           = "SomeStrongPassword1!"
 cognito_domain_prefix = "chatterchat-yourname"  # must be globally unique
 ```
 
@@ -130,23 +118,13 @@ terraform init
 terraform apply
 ```
 
-Takes 15–25 minutes (RDS + CloudFront). When done, grab your config values:
+Takes ~30 seconds. When done, grab your config values:
 
 ```bash
 terraform output app_js_config
 ```
 
-### 4. Run database migrations
-
-RDS is in a private VPC. The migration script handles the SSM tunnel automatically — no manual steps needed:
-
-```bash
-./scripts/migrate.sh
-```
-
-This SSMs into the bastion, reads DB credentials from Secrets Manager, and runs all `backend/migrations/*.sql` files in order. You can terminate the bastion EC2 instance in the AWS Console afterwards to stop paying for it (~$1.50/month).
-
-### 5. Configure and deploy the frontend
+### 4. Configure and deploy the frontend
 
 ```bash
 cp frontend/config.js.example frontend/config.js
@@ -161,7 +139,6 @@ Fill in `frontend/config.js` with the values from `terraform output app_js_confi
 | `cognitoDomain` | `terraform output app_js_config` |
 | `clientId` | `terraform output app_js_config` |
 | `userPoolId` | `terraform output app_js_config` |
-| `redirectUri` | `terraform output app_js_config` |
 
 Make sure `localDev: false`.
 
@@ -175,7 +152,7 @@ aws cloudfront create-invalidation \
   --paths "/*"
 ```
 
-### 6. Open the app
+### 5. Open the app
 
 ```bash
 terraform -chdir=infra output cloudfront_domain
@@ -198,12 +175,6 @@ cd infra && terraform apply
 
 ```bash
 aws s3 sync frontend/ s3://$(terraform -chdir=infra output -raw s3_bucket_name)/ --delete
-```
-
-**Database migrations** (when new `.sql` files are added):
-
-```bash
-./scripts/migrate.sh
 ```
 
 ---
